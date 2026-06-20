@@ -1,43 +1,43 @@
 #!/usr/bin/env bash
 # =============================================================================
-# 업무용 자동화 — 온콜/리포트는 모두 Slack 으로 전달.
-# 실행 전: hermes 게이트웨이에 Slack 이 붙어 있어야 함.
-#   hermes -p work gateway setup     # Slack bot/app 토큰 입력
-#   hermes -p work gateway start     # 게이트웨이 기동 (백그라운드 권장)
-# 그런 다음 이 스크립트를 실행해 cron/webhook 을 등록.
-# ※ 채널/일정/저장소는 본인 환경에 맞게 수정한 뒤 실행하세요.
+# 업무용 자동화 (제이든) — "자동 전송 없음 / 초안·인터랙티브" 모델.
+#
+#  ▸ 온콜: 에이전트가 자동으로 채널에 글을 올리지 않는다. 제이든이 Slack 에서
+#    스레드/질문을 던지면 게이트웨이가 답변(초안)을 준다. 최종 점검·전송은 제이든.
+#    → 별도 webhook 등록이 필요 없다. 게이트웨이만 띄우면 된다:
+#         hermes -p work gateway setup     # Slack bot/app 토큰
+#         hermes -p work gateway start     # 봇에게 DM/스레드로 질문 → 답변 초안
+#
+#  ▸ 아래 cron 들은 "나 자신에게 가는 요약"만 자동화한다(팀에 자동 발송 X).
+#    --deliver slack 은 /sethome 으로 지정한 **내 home 채널(보통 봇 DM)** 로 간다.
+#    팀 채널로 새는 게 싫으면 home 을 내 DM 으로 설정해 두세요.
+#
+#  실행 전: 게이트웨이가 떠 있어야 함. 일정/문구는 본인 환경에 맞게 수정.
 # =============================================================================
 set -euo pipefail
 P="hermes -p work"
 
-# ── 1) 아침 브리핑 (평일 09:00) → Slack ──────────────────────────────────────
-# 어제~오늘 내 Jira 이슈, 리뷰 대기 PR, 오늘 할일을 한 화면에 요약.
+# ── 아침 브리핑 (평일 09:00) → 내 home(DM) ───────────────────────────────────
+# 내 Jira 이슈 / 리뷰 대기 / 오늘 할일을 나에게만 요약. (자동 전송 아님)
 $P cron create "0 9 * * 1-5" \
-  "오늘 업무 브리핑을 작성해줘: (1) 나에게 할당된 열린 Jira 이슈, (2) 내 리뷰가 필요한 GitHub PR, (3) Notion의 오늘 할일. 핵심만 불릿으로, 우선순위 순." \
+  "오늘 업무 브리핑(나 혼자 보기용): (1) 나에게 할당된 열린 Jira 이슈, (2) 내가 챙겨야 할 PR, (3) Notion 오늘 할일. 핵심만 불릿, 우선순위 순." \
   --name "Morning brief" \
-  --skills "github" \
   --deliver slack
 
-# ── 2) 온콜 알림 트리아지 (webhook) → Slack ──────────────────────────────────
-# 알림 시스템(Datadog/PagerDuty/Grafana 등)에서 이 webhook 으로 POST.
-# 페이로드 필드명({alert.name} 등)은 본인 알림 소스에 맞게 조정.
-$P webhook subscribe oncall-triage \
-  --prompt "온콜 알림: {alert.name} (심각도 {alert.severity}). 담당 서비스를 찾고, 최근 배포/관련 PR을 확인하고, 영향 범위와 즉시 취할 첫 조치를 제안해줘. 추측은 근거와 함께." \
-  --skills "github" \
-  --deliver slack
-
-# ── 3) GitHub PR 리뷰 보조 (webhook) → Slack ─────────────────────────────────
-# 내 저장소에 PR 이 열리면 요약 + 리스크 포인트를 Slack 으로.
-$P webhook subscribe pr-summary \
-  --events "pull_request" \
-  --prompt "PR #{pull_request.number}: {pull_request.title} (by {pull_request.user.login}). 변경 요약과 리뷰 시 주의할 리스크 3가지를 알려줘." \
-  --deliver slack
-
-# ── 4) 주간 히스토리 다이제스트 (월 08:30) → Slack ───────────────────────────
-# 지난 주 대화/작업 히스토리를 검색·요약 (자가 세션 검색 활용).
+# ── 주간 회고 (월 08:30) → 내 home(DM) ───────────────────────────────────────
+# 지난 주 작업을 세션 히스토리에서 검색·요약. (자동 전송 아님)
 $P cron create "30 8 * * 1" \
-  "지난 7일 동안 내가 한 작업을 세션 히스토리에서 검색해 요약해줘. 끝낸 것, 진행 중인 것, 막힌 것으로 분류." \
+  "지난 7일 내가 한 작업을 세션 히스토리에서 검색해 요약(나 혼자 보기용): 끝낸 것 / 진행 중 / 막힌 것." \
   --name "Weekly recap" \
   --deliver slack
 
-echo "✅ 자동화 등록 완료. 확인:  hermes -p work cron list  /  hermes -p work webhook list"
+cat <<'EOF'
+
+✅ cron 등록 완료 (나에게만 가는 요약 2건).
+   확인:  hermes -p work cron list
+
+ℹ️  온콜은 webhook 자동발송을 쓰지 않습니다.
+    게이트웨이만 띄우면 Slack 에서 질문→답변 초안을 받습니다:
+      hermes -p work gateway start
+    초안 검토 후 전송은 제이든이 직접.
+EOF
