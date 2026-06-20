@@ -30,9 +30,24 @@ agent:
       For on-call, prioritize impact/blast-radius and a concrete first step.
       Korean by default; keep code, identifiers, and logs verbatim.
 
+# =============================================================================
+# 자가학습 메모리 (L2 지식층의 일부)
+#   provider 는 `hermes -p work memory setup` 에서 hindsight 선택으로 설정.
+#   (또는: hermes -p work config set memory.provider hindsight)
+#   상세 셋업은 personal/knowledge/memory-setup.md 참고.
+# =============================================================================
+memory:
+  memory_enabled: true        # 에이전트가 환경/관례/배운 것을 적립
+  user_profile_enabled: true  # USER.md 유저 모델 사용
+  nudge_interval: 10          # 10턴마다 "기억할 것" 적립 넛지 (0=끔)
+  flush_min_turns: 6          # 컨텍스트 소실 전 마지막 적립 기회
+
 skills:
   # 복잡한 작업 후 스킬화 유도 (자가학습 루프의 핵심). 0이면 끔.
   creation_nudge_interval: 15
+  # 회사 지식(런북) 스킬을 이 레포에서 공유: personal/knowledge/runbooks
+  external_dirs:
+    - "${HOME}/.hermes/profiles/work/skills"
   # 회사/팀 공용 스킬을 별도 디렉터리로 공유하고 싶으면 주석 해제.
   # external_dirs:
   #   - ~/.hermes/work-skills

@@ -1,0 +1,76 @@
+# =============================================================================
+# 씨앗 온톨로지 — 회사 지식의 1차 source of truth (Git 관리).
+# 엔티티는 6종만: service / owner / dependency / runbook / incident / decision.
+# 처음엔 아는 서비스 3~5개만 채우세요. 나머지는 실사용으로 자동 누적됩니다.
+# 갱신 후 L2(hindsight)로 1회 인제스트 → capture-distill.md 참고.
+# =============================================================================
+
+# ── 사람/담당 (Owner) ────────────────────────────────────────────────────────
+owners:
+  - id: jayden
+    name: 제이든
+    team: 앱개발팀
+    role: app engineer
+    slack: "@jayden"            # 실제 핸들로
+  # - id: alice
+  #   name: 앨리스
+  #   team: 플랫폼팀
+  #   owns: [auth-api]
+
+# ── 서비스 (Service) ─────────────────────────────────────────────────────────
+# on-call/개발이 실제로 다루는 단위만.
+services:
+  - id: example-app            # ← 예시. 실제 서비스로 교체
+    name: 예시 앱 백엔드
+    owner: jayden              # owners.id
+    repo_local_path: "~/work/example-app"   # 제이든이 로컬에서 여는 경로
+    runbooks: [example-app-5xx]            # runbooks.id
+    depends_on: [auth-api, postgres-main]  # dependency/service id
+    slack_channel: "#app-dev"
+    criticality: medium        # high | medium | low (온콜 우선순위)
+    notes: "한 줄 설명 — 무엇을 하는 서비스인가"
+
+# ── 의존성 (Dependency) ──────────────────────────────────────────────────────
+# 외부/공유 의존. 장애 전파 경로 파악용.
+dependencies:
+  - id: auth-api
+    name: 인증 API
+    kind: internal-service
+    owner_team: 플랫폼팀
+  - id: postgres-main
+    name: 메인 DB
+    kind: datastore
+
+# ── 런북 (Runbook) ───────────────────────────────────────────────────────────
+# 절차의 "인덱스". 본문은 스킬(SKILL.md)로 증류해 link 로 연결.
+runbooks:
+  - id: example-app-5xx
+    title: "example-app 5xx 급증 대응"
+    service: example-app
+    symptoms: ["5xx 비율 급등", "p99 지연 상승"]
+    skill: "runbooks/example-app-5xx"   # ~/.hermes/.../skills 또는 personal/knowledge/runbooks
+    last_reviewed: 2026-06-20
+
+# ── 장애 이력 (Incident) ─────────────────────────────────────────────────────
+# 해결된 장애를 짧게. "다음에 같은 일" 회수용. Slack 스레드 링크가 핵심.
+incidents:
+  # - id: INC-2026-06-15-auth-timeout
+  #   date: 2026-06-15
+  #   service: example-app
+  #   summary: "auth-api 타임아웃으로 로그인 5xx"
+  #   root_cause: "auth-api 커넥션풀 고갈"
+  #   resolution: "풀 사이즈 상향 + 타임아웃 단축"
+  #   slack_thread: "https://...slack.com/archives/.../p..."
+  #   jira: "ABC-1234"
+
+# ── 결정 (Decision) ──────────────────────────────────────────────────────────
+# 왜 이렇게 했는지(ADR-lite). 의사결정 지원/재논의 방지용.
+decisions:
+  # - id: DEC-2026-05-01-queue-choice
+  #   date: 2026-05-01
+  #   title: "비동기 처리는 SQS 채택"
+  #   context: "트래픽 스파이크 시 동기 처리 한계"
+  #   choice: "SQS + 워커"
+  #   alternatives: ["Kafka", "DB 폴링"]
+  #   tradeoffs: "운영 단순성 우선, 초저지연은 포기"
+  #   slack_thread: "https://...slack.com/archives/.../p..."
