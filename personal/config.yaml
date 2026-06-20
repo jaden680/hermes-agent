@@ -1,0 +1,77 @@
+# =============================================================================
+# 개인 업무용 Hermes 프로필 — "work"
+# 적용 위치: ~/.hermes/profiles/work/config.yaml  (apply.sh가 복사)
+# 목적: 개발 / 온콜대응 / 의사결정 / 히스토리 검색 / 할일 관리 (회사 업무)
+# 코어 소스는 건드리지 않고 이 설정만으로 개인화합니다.
+# 전체 옵션은 저장소 루트의 cli-config.yaml.example 참고.
+# =============================================================================
+
+model:
+  # 개발/추론 중심이므로 강력한 코딩 모델을 기본으로.
+  # provider: auto 이면 .env의 키로 자동 감지 (Nous Portal / Anthropic / OpenRouter 등).
+  default: "anthropic/claude-opus-4.6"
+  provider: "auto"
+  # 비용 민감한 자동화는 cron에서 --model 로 더 싼 모델 지정 권장.
+
+agent:
+  # 개발/온콜은 멀티스텝이 길어질 수 있어 여유롭게.
+  max_turns: 80
+  # 의사결정/디버깅 품질 우선 → 높은 추론 강도.
+  reasoning_effort: "high"
+  verbose: false
+
+  personalities:
+    # 평소 회사 업무 기본 톤: 간결 + 근거 중심 + 실행 위주.
+    work: >-
+      You are my work copilot for software engineering, on-call response,
+      and decision support. Be concise and direct. Lead with the answer or
+      recommendation, then the reasoning. When trade-offs exist, give a
+      recommendation — not an exhaustive survey. Cite files as path:line.
+      For on-call, prioritize impact/blast-radius and a concrete first step.
+      Korean by default; keep code, identifiers, and logs verbatim.
+
+skills:
+  # 복잡한 작업 후 스킬화 유도 (자가학습 루프의 핵심). 0이면 끔.
+  creation_nudge_interval: 15
+  # 회사/팀 공용 스킬을 별도 디렉터리로 공유하고 싶으면 주석 해제.
+  # external_dirs:
+  #   - ~/.hermes/work-skills
+
+# 플랫폼별 도구셋. CLI는 풀세트, Slack은 온콜/알림 대응용.
+platform_toolsets:
+  cli: [hermes-cli]
+  slack: [hermes-slack]
+
+# =============================================================================
+# MCP 서버 — 회사 스택 연동 (GitHub / Notion / Jira)
+#   Slack은 MCP가 아니라 게이트웨이 채널로 붙입니다 (온콜 알림 전송).
+#   실제 토큰은 여기 적지 말고 ~/.hermes/profiles/work/.env 에 두세요.
+# =============================================================================
+mcp_servers:
+  # 코드 / PR / 이슈
+  github:
+    command: npx
+    args: ["-y", "@modelcontextprotocol/server-github"]
+    env:
+      GITHUB_PERSONAL_ACCESS_TOKEN: "${GITHUB_TOKEN}"
+
+  # 할일 / 문서 / 히스토리 (회의록·결정 기록)
+  notion:
+    url: "https://mcp.notion.com/mcp"
+    # OAuth 방식. 최초 1회 브라우저 인증. 토큰 헤더가 필요하면 아래처럼:
+    # headers:
+    #   Authorization: "Bearer ${NOTION_TOKEN}"
+
+  # 이슈 트래킹 (Jira). 커뮤니티 서버 mcp-atlassian 사용.
+  jira:
+    command: uvx
+    args: ["mcp-atlassian"]
+    timeout: 120
+    env:
+      JIRA_URL: "${JIRA_URL}"
+      JIRA_USERNAME: "${JIRA_USERNAME}"
+      JIRA_API_TOKEN: "${JIRA_API_TOKEN}"
+      # Confluence도 쓰면:
+      # CONFLUENCE_URL: "${CONFLUENCE_URL}"
+      # CONFLUENCE_USERNAME: "${CONFLUENCE_USERNAME}"
+      # CONFLUENCE_API_TOKEN: "${CONFLUENCE_API_TOKEN}"
